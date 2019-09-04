@@ -34,13 +34,13 @@ export default class Megamenu{
          * This can be set on a breakpoint basis, so that the 'menu' is not closed when tapping out.
          */
         if (this.options.unsetOnMouseleave) {
-            this.menu.addEventListener('mouseleave', this.forceUnsetAll.bind(this));
+            this.menu.addEventListener('mouseleave', this.unsetRelatives.bind(this));
         }
 
         if (this.options.unsetOnClickOut) {
             document.addEventListener('click', function(evt) {
                 if (this.menu.isActive && !this.menu.contains(evt.target)) {
-                    this.forceUnsetAll();
+                    this.unsetRelatives();
                 }
             }.bind(this));
         }
@@ -176,7 +176,6 @@ export default class Megamenu{
             eventsArray.forEach(function(currentEvt) {
                 trigger.addEventListener(currentEvt, function() {
                     this.unsetRelatives(trigger);
-                    this._afterItemUnset(trigger);
                 }.bind(this));
             }.bind(this));
         }
@@ -265,7 +264,7 @@ export default class Megamenu{
     }
 
     /**
-     * If the targeted item/trigger is active, and can be closed, removes the active status and fires _afterItemUnset.
+     * If the targeted item/trigger is active, and can be closed, removes the active status.
      * Otherwise trigger is activated and the corresponding callbacks are fired.
      * @param  {[Node]} trigger [description]
      * @param  {[boolean]} isMousehover [description]
@@ -274,15 +273,8 @@ export default class Megamenu{
         if (trigger.classList.contains(this.options.itemActiveClass)) {
             if (!isMousehover && !trigger.megamenu.disableUnsetSelf) {
                 this.unsetRelatives(trigger);
-                this._afterItemUnset(trigger);
             }
         } else {
-            let lastItemActive = this.getLastActiveItem();
-
-            if (lastItemActive) {
-                this._afterItemUnset(lastItemActive);
-            }
-
             this._beforeItemSet(trigger);
             this.unsetRelatives(trigger, this.setItemActive.bind(this));
             this._afterItemSet(trigger);
@@ -341,10 +333,6 @@ export default class Megamenu{
             } else {
                 this.unsetRelatives();
             }
-
-            if (lastItemActive) {
-                this._afterItemUnset(lastItemActive);
-            }
         }
     }
 
@@ -388,6 +376,11 @@ export default class Megamenu{
 
         [].forEach.call(activeElements, function(el) {
             el.classList.remove(this.options.itemActiveClass);
+
+            //If this element is a trigger, fire _afterItemUnset.
+            if (el.megamenu) {
+                this._afterItemUnset(el);
+            }
         }.bind(this));
 
         this.removeLastItemActive();
@@ -402,20 +395,6 @@ export default class Megamenu{
             this.menu.isActive = false;
             this.menu.classList.remove(this.options.menuActiveClass);
             this._afterMenuUnset(this.menu);
-        }
-    }
-
-    /**
-     * Closes the menu and triggers _afterItemUnset on whatever this.getLastActiveItem() returns.
-     * @return {[type]} [description]
-     */
-    forceUnsetAll() {
-        let lastItemActive = this.getLastActiveItem();
-
-        this.unsetRelatives();
-
-        if (lastItemActive) {
-            this._afterItemUnset(lastItemActive);
         }
     }
 }
