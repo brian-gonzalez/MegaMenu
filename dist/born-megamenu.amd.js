@@ -61,13 +61,13 @@ define(['exports', '@borngroup/born-utilities'], function (exports, _bornUtiliti
              * This can be set on a breakpoint basis, so that the 'menu' is not closed when tapping out.
              */
             if (this.options.unsetOnMouseleave) {
-                this.menu.addEventListener('mouseleave', this.forceUnsetAll.bind(this));
+                this.menu.addEventListener('mouseleave', this.unsetRelatives.bind(this));
             }
 
             if (this.options.unsetOnClickOut) {
                 document.addEventListener('click', function (evt) {
                     if (this.menu.isActive && !this.menu.contains(evt.target)) {
-                        this.forceUnsetAll();
+                        this.unsetRelatives();
                     }
                 }.bind(this));
             }
@@ -179,7 +179,6 @@ define(['exports', '@borngroup/born-utilities'], function (exports, _bornUtiliti
                     eventsArray.forEach(function (currentEvt) {
                         trigger.addEventListener(currentEvt, function () {
                             this.unsetRelatives(trigger);
-                            this._afterItemUnset(trigger);
                         }.bind(this));
                     }.bind(this));
                 }
@@ -261,15 +260,8 @@ define(['exports', '@borngroup/born-utilities'], function (exports, _bornUtiliti
                 if (trigger.classList.contains(this.options.itemActiveClass)) {
                     if (!isMousehover && !trigger.megamenu.disableUnsetSelf) {
                         this.unsetRelatives(trigger);
-                        this._afterItemUnset(trigger);
                     }
                 } else {
-                    var lastItemActive = this.getLastActiveItem();
-
-                    if (lastItemActive) {
-                        this._afterItemUnset(lastItemActive);
-                    }
-
                     this._beforeItemSet(trigger);
                     this.unsetRelatives(trigger, this.setItemActive.bind(this));
                     this._afterItemSet(trigger);
@@ -319,10 +311,6 @@ define(['exports', '@borngroup/born-utilities'], function (exports, _bornUtiliti
                     } else {
                         this.unsetRelatives();
                     }
-
-                    if (lastItemActive) {
-                        this._afterItemUnset(lastItemActive);
-                    }
                 }
             }
         }, {
@@ -361,6 +349,11 @@ define(['exports', '@borngroup/born-utilities'], function (exports, _bornUtiliti
 
                 [].forEach.call(activeElements, function (el) {
                     el.classList.remove(this.options.itemActiveClass);
+
+                    //If this element is a trigger, fire _afterItemUnset.
+                    if (el.megamenu) {
+                        this._afterItemUnset(el);
+                    }
                 }.bind(this));
 
                 this.removeLastItemActive();
@@ -375,17 +368,6 @@ define(['exports', '@borngroup/born-utilities'], function (exports, _bornUtiliti
                     this.menu.isActive = false;
                     this.menu.classList.remove(this.options.menuActiveClass);
                     this._afterMenuUnset(this.menu);
-                }
-            }
-        }, {
-            key: 'forceUnsetAll',
-            value: function forceUnsetAll() {
-                var lastItemActive = this.getLastActiveItem();
-
-                this.unsetRelatives();
-
-                if (lastItemActive) {
-                    this._afterItemUnset(lastItemActive);
                 }
             }
         }]);
