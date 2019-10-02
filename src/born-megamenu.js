@@ -2,7 +2,7 @@
  * Module allows to create mega menu functionality, including events, and callbacks.
  */
 
-import {whichTransition, objectAssign} from '@borngroup/born-utilities';
+import {whichTransition, objectAssign, forceFocus} from '@borngroup/born-utilities';
 
 export default class Megamenu{
     constructor(options) {
@@ -200,8 +200,6 @@ export default class Megamenu{
      * Checks if trigger is able to be focused, for example the target trigger may only appear after a transition.
      */
     shiftFocus(trigger, isVisible) {
-        let focusInterval;
-
         if (this._previousFocus) {
             this._previousFocus.tabIndex = '-1';
         }
@@ -212,13 +210,7 @@ export default class Megamenu{
         if (trigger) {
             trigger.tabIndex = '0';
 
-            focusInterval = window.setInterval(function() {
-                trigger.focus();
-
-                if (trigger.matches(':focus')) {
-                    window.clearInterval(focusInterval);
-                }
-            }, 100);
+            forceFocus(trigger);
         }
     }
 
@@ -572,6 +564,11 @@ export default class Megamenu{
                 lastActiveTrigger = targetTriggerSelector ? (this.getMatchingActiveTrigger(targetTriggerSelector) || lastActiveTrigger) : lastActiveTrigger;
 
                 this.unsetSiblings(lastActiveTrigger);
+
+                //Prevent the event from bubbling if there's an active trigger.
+                if (lastActiveTrigger) {
+                    evt.stopPropagation();
+                }
             } else {
                 this.unsetSiblings();
             }

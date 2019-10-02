@@ -226,8 +226,6 @@ var Megamenu = function () {
     }, {
         key: 'shiftFocus',
         value: function shiftFocus(trigger, isVisible) {
-            var focusInterval = void 0;
-
             if (this._previousFocus) {
                 this._previousFocus.tabIndex = '-1';
             }
@@ -238,13 +236,7 @@ var Megamenu = function () {
             if (trigger) {
                 trigger.tabIndex = '0';
 
-                focusInterval = window.setInterval(function () {
-                    trigger.focus();
-
-                    if (trigger.matches(':focus')) {
-                        window.clearInterval(focusInterval);
-                    }
-                }, 100);
+                (0, _bornUtilities.forceFocus)(trigger);
             }
         }
 
@@ -639,6 +631,11 @@ var Megamenu = function () {
                     lastActiveTrigger = targetTriggerSelector ? this.getMatchingActiveTrigger(targetTriggerSelector) || lastActiveTrigger : lastActiveTrigger;
 
                     this.unsetSiblings(lastActiveTrigger);
+
+                    //Prevent the event from bubbling if there's an active trigger.
+                    if (lastActiveTrigger) {
+                        evt.stopPropagation();
+                    }
                 } else {
                     this.unsetSiblings();
                 }
