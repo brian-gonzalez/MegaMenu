@@ -21,7 +21,7 @@ Allows to create mega menu functionality, featuring events, callbacks, and acces
 
 **clickThroughSelector**: [String] By default, Megamenu cancels (evt.preventDefault) link following on anchor tags that are also 'triggers'. You can specify a class name to force Megamenu to follow the link on click. **Note:** touch taps on anchor triggers will always be cancelled.
 
-**unsetRelativesSelector**: [String] When an element matching this selector is triggered, unset all of the element's relative (same level) menu items.
+**unsetSiblingsSelector**: [String] When an element matching this selector is triggered, unset all of the element's relative (same level) menu items.
 
 **unsetOnMouseleave**: [Boolean] *Default: true*. Unsets the Menu after hovering out of it. Set to **false** to keep Menu active.
 
@@ -55,7 +55,7 @@ Parameters:
         triggerSelector: '.navigation__trigger',
         targetSelector: '.navigation__target',
         clickThroughSelector: '.lvl1-anchor',
-        unsetRelativesSelector: '.no-submenu',
+        unsetSiblingsSelector: '.no-submenu',
         hoverDelay: 150,
         afterMenuSet: function(trigger) { ... },
         responsive: [
