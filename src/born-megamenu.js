@@ -114,7 +114,7 @@ export default class Megamenu{
 
         //Some settings contain properties that are too deep, and since our pathetic attemp at an `objectAssign` method does not support deep copies,
         //we just re-set them here after the fact.
-        this.options.keyboardNavigation = objectAssign({triggers: [13, 32], horizontal: '*', vertical: false}, this.options.keyboardNavigation);
+        this.options.keyboardNavigation = objectAssign({triggers: [13, 32], horizontal: '*', vertical: false, manageTabIndex: false}, this.options.keyboardNavigation);
 
         /**
          * Updates properties with those coming from a matching breakpoint.
@@ -155,7 +155,10 @@ export default class Megamenu{
             trigger.megamenu.target = this.getTriggerTarget(trigger);
         }
 
-        this.setInitialTabIndex(trigger, index);
+        if (this.options.keyboardNavigation.manageTabIndex) {
+            this.setInitialTabIndex(trigger, index);
+        }
+
         this.setupKeyboardHandlers(trigger);
 
         if (trigger.megamenu.target) {
@@ -200,7 +203,7 @@ export default class Megamenu{
      * Checks if trigger is able to be focused, for example the target trigger may only appear after a transition.
      */
     shiftFocus(trigger, isVisible) {
-        if (this._previousFocus) {
+        if (this._previousFocus && this.options.keyboardNavigation.manageTabIndex) {
             this._previousFocus.tabIndex = '-1';
         }
 
@@ -208,7 +211,9 @@ export default class Megamenu{
         this._previousFocus = trigger;
 
         if (trigger) {
-            trigger.tabIndex = '0';
+            if (this.options.keyboardNavigation.manageTabIndex) {
+                trigger.tabIndex = '0';
+            }
 
             forceFocus(trigger);
         }
@@ -242,10 +247,6 @@ export default class Megamenu{
             'aria-labelledby': {
                 value: trigger.id,
                 target: true
-            },
-            'aria-haspopup': {
-                value: 'true',
-                trigger: true
             },
             'aria-controls': {
                 value: trigger.megamenu.target.id,

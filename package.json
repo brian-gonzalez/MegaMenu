@@ -27,7 +27,7 @@
   "author": "BORN Group FE Team fed@borngroup.com",
   "license": "ISC",
   "dependencies": {
-    "@borngroup/born-utilities": "^2.4.3"
+    "@borngroup/born-utilities": "^2.4.5"
   },
   "devDependencies": {
     "babel-cli": "^6.24.1",
