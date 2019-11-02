@@ -90,6 +90,22 @@ define(['exports', '@borngroup/born-utilities'], function (exports, _bornUtiliti
 
                 //Set a separate keydown events to handle keyboard-only navigation focus shifting.
                 this.menu.addEventListener('keydown', this.unsetCurrentSubmenu.bind(this));
+
+                //Listen to focus whenever a trigger gains focus. If this trigger is not active, unset all of its siblings.
+                //This prevents a navigation panel from staying open when using the keyboard (Tab) to navigate around.
+                if (this.options.unsetOnSubmenuFocusOut) {
+                    document.addEventListener('focusin', function (evt) {
+                        if (this.menu.isActive) {
+                            var lastActiveTrigger = this.getLastActiveTrigger();
+
+                            if (document.activeElement.megamenu && lastActiveTrigger && this.isSiblingTrigger(document.activeElement, lastActiveTrigger)) {
+                                this.unsetSiblings(document.activeElement);
+                            } else if (!lastActiveTrigger.megamenu.target.contains(document.activeElement)) {
+                                this.unsetSiblings();
+                            }
+                        }
+                    }.bind(this));
+                }
             }
         }, {
             key: 'getCursorSpeed',
@@ -328,7 +344,7 @@ define(['exports', '@borngroup/born-utilities'], function (exports, _bornUtiliti
         }, {
             key: 'isTriggerActive',
             value: function isTriggerActive(trigger) {
-                return trigger.classList.contains(this.options.itemActiveClass);
+                return trigger.megamenu.isActive;
             }
         }, {
             key: 'getDirectionTrigger',
@@ -501,6 +517,9 @@ define(['exports', '@borngroup/born-utilities'], function (exports, _bornUtiliti
             value: function setTriggerActive(trigger) {
                 var SCOPE = this;
 
+                //Set an `isActive` flag on the individual triggers for easier control on the frontend.
+                trigger.megamenu.isActive = true;
+
                 trigger.classList.add(this.options.itemActiveClass);
                 trigger.megamenu.target.classList.add(this.options.itemActiveClass);
                 trigger.megamenu.parent.classList.add(this.options.itemActiveClass);
@@ -609,6 +628,8 @@ define(['exports', '@borngroup/born-utilities'], function (exports, _bornUtiliti
 
                     //If this element is a trigger, fire _afterTriggerUnset.
                     if (el.megamenu) {
+                        el.megamenu.isActive = false;
+
                         this._afterTriggerUnset(el);
 
                         //Remove custom attributes if the current element is a Megamenu trigger.
