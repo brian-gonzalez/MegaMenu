@@ -39,9 +39,9 @@ Parameters:
 
 **afterMenuUnset**: [function] Runs every time the menu is closed (unset).
 
-**beforeItemSet**: [function] Runs every time a 'trigger' is actioned on (set).
+**beforeTriggerSet**: [function] Runs every time a 'trigger' is actioned on (set).
 
-**afterItemUnset**: [function] Runs every time a 'trigger' is unset, i.e. before a *relative* trigger is set.
+**afterTriggerUnset**: [function] Runs every time a 'trigger' is unset, i.e. before a *relative* trigger is set.
 
 ## Extras ##
 

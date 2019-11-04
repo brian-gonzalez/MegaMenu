@@ -69,33 +69,27 @@ define(['exports', '@borngroup/born-utilities'], function (exports, _bornUtiliti
             value: function setupMenuControlListeners() {
                 this.menu.addEventListener('mousemove', this.getCursorSpeed.bind(this));
 
-                /**
-                 * Determines if 'menu' should be closed when hovering or clicking out of it.
-                 * This can be set on a breakpoint basis, so that the 'menu' is not closed when tapping out.
-                 */
-                if (this.options.unsetOnMouseleave) {
-                    this.menu.addEventListener('mouseleave', this.unsetSiblings.bind(this));
-                }
-
-                if (this.options.unsetOnClickOut) {
-                    document.addEventListener('click', function (evt) {
-                        if (this.menu.isActive && !this.menu.contains(evt.target)) {
-                            this.unsetSiblings();
-                        }
-                    }.bind(this));
-                }
-
                 //Leverage unsetCurrentSubmenu() and listen to clicks or keyboard events to close the menu.
-                this.menu.addEventListener('click', this.unsetCurrentSubmenu.bind(this));
+                this.menu.addEventListener('click', function (evt) {
+                    this.isKeyboardEvent = false;
+
+                    this.unsetCurrentSubmenu(evt);
+                }.bind(this));
 
                 //Set a separate keydown events to handle keyboard-only navigation focus shifting.
-                this.menu.addEventListener('keydown', this.unsetCurrentSubmenu.bind(this));
+                this.menu.addEventListener('keydown', function (evt) {
+                    this.isKeyboardEvent = true;
 
-                //Listen to focus whenever a trigger gains focus. If this trigger is not active, unset all of its siblings.
+                    this.unsetCurrentSubmenu(evt);
+                }.bind(this));
+
+                //Listen to whenever a trigger gains focus. If the focused trigger is not active, unset all of its siblings.
                 //This prevents a navigation panel from staying open when using the keyboard (Tab) to navigate around.
-                if (this.options.unsetOnSubmenuFocusOut) {
+                if (this.options.unsetSubmenuOnFocusOut) {
                     document.addEventListener('focusin', function (evt) {
-                        if (this.menu.isActive) {
+                        //Only proceed if the menu is active AND the event is keyboard in order to prevent clashing with mouse events.
+                        //This prevents setting an active trigger twice when clicking on it.
+                        if (this.menu.isActive && this.isKeyboardEvent) {
                             var lastActiveTrigger = this.getLastActiveTrigger();
 
                             if (document.activeElement.megamenu && lastActiveTrigger && this.isSiblingTrigger(document.activeElement, lastActiveTrigger)) {
@@ -105,6 +99,20 @@ define(['exports', '@borngroup/born-utilities'], function (exports, _bornUtiliti
                             }
                         }
                     }.bind(this));
+                }
+
+                //Unsets the menu whenever the user clicks outside of it.
+                if (this.options.unsetOnClickOut) {
+                    document.addEventListener('click', function (evt) {
+                        if (this.menu.isActive && !this.menu.contains(evt.target)) {
+                            this.unsetSiblings();
+                        }
+                    }.bind(this));
+                }
+
+                //Determines if 'menu' should be closed when hovering out of it.
+                if (this.options.unsetOnMouseleave) {
+                    this.menu.addEventListener('mouseleave', this.unsetSiblings.bind(this));
                 }
             }
         }, {
@@ -502,13 +510,18 @@ define(['exports', '@borngroup/born-utilities'], function (exports, _bornUtiliti
         }, {
             key: 'toggleTriggerActive',
             value: function toggleTriggerActive(trigger, isMousehover) {
+                // console.log('toggle', this.isTriggerActive(trigger));
+
                 if (this.isTriggerActive(trigger)) {
                     if (!isMousehover && !trigger.megamenu.disableUnsetSelf) {
+                        console.log('untrigger');
                         this.unsetSiblings(trigger);
                     }
                 } else {
+                    console.log('trigger');
                     this._beforeTriggerUnset(trigger);
                     this.unsetSiblings(trigger, this.setTriggerActive.bind(this));
+                    // this.setTriggerActive(trigger);
                     this._afterTriggerSet(trigger);
                 }
             }
@@ -622,6 +635,8 @@ define(['exports', '@borngroup/born-utilities'], function (exports, _bornUtiliti
             value: function unsetSiblings(trigger, callback) {
                 var commonContainer = this.getClosestParentTarget(trigger),
                     activeElements = commonContainer.querySelectorAll('.' + this.options.itemActiveClass);
+
+                // console.log(trigger);
 
                 [].forEach.call(activeElements, function (el) {
                     el.classList.remove(this.options.itemActiveClass);
