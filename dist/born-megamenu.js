@@ -589,18 +589,13 @@ var Megamenu = function () {
     }, {
         key: 'toggleTriggerActive',
         value: function toggleTriggerActive(trigger, isMousehover) {
-            // console.log('toggle', this.isTriggerActive(trigger));
-
             if (this.isTriggerActive(trigger)) {
                 if (!isMousehover && !trigger.megamenu.disableUnsetSelf) {
-                    console.log('untrigger');
                     this.unsetSiblings(trigger);
                 }
             } else {
-                console.log('trigger');
                 this._beforeTriggerUnset(trigger);
                 this.unsetSiblings(trigger, this.setTriggerActive.bind(this));
-                // this.setTriggerActive(trigger);
                 this._afterTriggerSet(trigger);
             }
         }
@@ -759,8 +754,6 @@ var Megamenu = function () {
         value: function unsetSiblings(trigger, callback) {
             var commonContainer = this.getClosestParentTarget(trigger),
                 activeElements = commonContainer.querySelectorAll('.' + this.options.itemActiveClass);
-
-            // console.log(trigger);
 
             [].forEach.call(activeElements, function (el) {
                 el.classList.remove(this.options.itemActiveClass);

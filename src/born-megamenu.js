@@ -526,18 +526,13 @@ export default class Megamenu{
      * @param  {[boolean]} isMousehover [description]
      */
     toggleTriggerActive(trigger, isMousehover) {
-        // console.log('toggle', this.isTriggerActive(trigger));
-
         if (this.isTriggerActive(trigger)) {
             if (!isMousehover && !trigger.megamenu.disableUnsetSelf) {
-                console.log('untrigger');
                 this.unsetSiblings(trigger);
             }
         } else {
-            console.log('trigger');
             this._beforeTriggerUnset(trigger);
             this.unsetSiblings(trigger, this.setTriggerActive.bind(this));
-            // this.setTriggerActive(trigger);
             this._afterTriggerSet(trigger);
         }
     }
@@ -673,8 +668,6 @@ export default class Megamenu{
     unsetSiblings(trigger, callback) {
         let commonContainer = this.getClosestParentTarget(trigger),
             activeElements = commonContainer.querySelectorAll('.' + this.options.itemActiveClass);
-
-        // console.log(trigger);
 
         [].forEach.call(activeElements, function(el) {
             el.classList.remove(this.options.itemActiveClass);
