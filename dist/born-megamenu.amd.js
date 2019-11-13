@@ -342,7 +342,11 @@ define(['exports', '@borngroup/born-utilities'], function (exports, _bornUtiliti
         }, {
             key: 'getClosestParentTarget',
             value: function getClosestParentTarget(trigger) {
-                return trigger ? trigger.closest(this.options.targetSelector) || this.menu : this.menu;
+                if (!trigger.nodeName) {
+                    return this.menu;
+                } else if (trigger.closest(this.options.targetSelector) || this.menu) {
+                    return this.menu;
+                }
             }
         }, {
             key: 'isSiblingTrigger',
