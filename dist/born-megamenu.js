@@ -4,6 +4,8 @@ Object.defineProperty(exports, "__esModule", {
     value: true
 });
 
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }(); /**
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       * Module allows to create mega menu functionality, including events, and callbacks.
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       */
@@ -391,10 +393,12 @@ var Megamenu = function () {
     }, {
         key: 'getClosestParentTarget',
         value: function getClosestParentTarget(trigger) {
-            if (!trigger.nodeName) {
+            if (trigger.nodeName) {
+                return trigger ? trigger.closest(this.options.targetSelector) || this.menu : this.menu;
+            } else if ((typeof trigger === 'undefined' ? 'undefined' : _typeof(trigger)) == undefined || trigger.relatedTarget && trigger.relatedTarget != null) {
                 return this.menu;
-            } else if (trigger.closest(this.options.targetSelector) || this.menu) {
-                return this.menu;
+            } else {
+                return;
             }
         }
     }, {

@@ -5,6 +5,12 @@ define(['exports', '@borngroup/born-utilities'], function (exports, _bornUtiliti
         value: true
     });
 
+    var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) {
+        return typeof obj;
+    } : function (obj) {
+        return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
+    };
+
     function _classCallCheck(instance, Constructor) {
         if (!(instance instanceof Constructor)) {
             throw new TypeError("Cannot call a class as a function");
@@ -342,10 +348,12 @@ define(['exports', '@borngroup/born-utilities'], function (exports, _bornUtiliti
         }, {
             key: 'getClosestParentTarget',
             value: function getClosestParentTarget(trigger) {
-                if (!trigger.nodeName) {
+                if (trigger.nodeName) {
+                    return trigger ? trigger.closest(this.options.targetSelector) || this.menu : this.menu;
+                } else if ((typeof trigger === 'undefined' ? 'undefined' : _typeof(trigger)) == undefined || trigger.relatedTarget && trigger.relatedTarget != null) {
                     return this.menu;
-                } else if (trigger.closest(this.options.targetSelector) || this.menu) {
-                    return this.menu;
+                } else {
+                    return;
                 }
             }
         }, {
