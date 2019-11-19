@@ -344,10 +344,12 @@ export default class Megamenu{
     }
 
     getClosestParentTarget(trigger) {
-        if (!trigger.nodeName) {
+        if (trigger.nodeName) {
+            return trigger ? trigger.closest(this.options.targetSelector) || this.menu : this.menu;
+        } else if (typeof trigger == undefined || (trigger.relatedTarget && trigger.relatedTarget != null)) {
             return this.menu;
-        } else if (trigger.closest(this.options.targetSelector) || this.menu) {
-            return this.menu;
+        } else {
+            return;
         }
     }
 
