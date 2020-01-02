@@ -344,7 +344,13 @@ export default class Megamenu{
     }
 
     getClosestParentTarget(trigger) {
-        return trigger ? trigger.closest(this.options.targetSelector) || this.menu : this.menu;
+        if (trigger && trigger.nodeName) {
+            return trigger.closest(this.options.targetSelector) || this.menu;
+        } else if (!trigger || (trigger.relatedTarget && trigger.relatedTarget !== null)) {
+            return this.menu;
+        } else {
+            return;
+        }
     }
 
     isSiblingTrigger(currentTrigger, testTrigger) {
