@@ -226,21 +226,46 @@ export default class Megamenu{
     /**
      * Checks if trigger is able to be focused, for example the target trigger may only appear after a transition.
      */
-    shiftFocus(trigger, isVisible) {
+    shiftFocus(trigger, setDirection, moveForward) {
         if (this._previousFocus && this.options.keyboardNavigation.manageTabIndex) {
             this._previousFocus.tabIndex = '-1';
         }
 
-        //Update the `this._previousFocus` element with the provided `trigger` element.
-        this._previousFocus = trigger;
-
         if (trigger) {
+            //Check whenever focus should be shifted in a specific direction.
+            //Should be ignored if focus is shifted to a specific element, i.e. by using keyboard characters.
+            //And only do so if the current trigger has at least one sibling.
+            if (setDirection && trigger.megamenu.siblings.length > 1) {
+                let consumedChecks = 0;
+
+                //Check wether the provided `trigger` is visible, if it's not, skip to the next visible one.
+                //Short-circuit if the loop went through all avaiable items, prevents infinite loops.
+                while (!this.elConsumesSpace(trigger) && consumedChecks <= trigger.megamenu.siblings.length) {
+                    consumedChecks++;
+
+                    trigger = this.getDirectionTrigger(trigger, moveForward);
+                }
+            }
+
+            //Update the `this._previousFocus` element with the provided `trigger` element.
+            this._previousFocus = trigger;
+
             if (this.options.keyboardNavigation.manageTabIndex) {
                 trigger.tabIndex = '0';
             }
 
             forceFocus(trigger);
         }
+    }
+
+    /**
+     * Checks if an element is currently consuming space in the DOM.
+     * An element with, or a child of, display: none; will consume no space.
+     * @param  {[type]} el [description]
+     * @return {[type]}    [description]
+     */
+    elConsumesSpace(el) {
+        return el.offsetParent || (el.firstElementChild && el.firstElementChild.offsetHeight > 0);
     }
 
     /**
@@ -365,10 +390,10 @@ export default class Megamenu{
      * Find the next trigger in the MegaMenu's trigger list that appears after the currently focused trigger,
      * and that matches the currently focused trigger's `matchingSiblingsAttribute` attribute value.
      */
-    getDirectionTrigger(trigger, isForward) {
+    getDirectionTrigger(trigger, moveForward) {
         let followingTrigger = null;
 
-        if (isForward) {
+        if (moveForward) {
             followingTrigger = trigger.megamenu.siblings[trigger.megamenu.index + 1] || trigger.megamenu.siblings[0];
         } else {
             followingTrigger = trigger.megamenu.siblings[trigger.megamenu.index - 1] || trigger.megamenu.siblings[trigger.megamenu.siblings.length - 1];
@@ -434,14 +459,14 @@ export default class Megamenu{
                         scope.toggleTriggerActive(this);
 
                         //Move the focus to the first trigger in the submenu
-                        scope.shiftFocus(trigger.megamenu.children[0]);
+                        scope.shiftFocus(trigger.megamenu.children[0], true, true);
                     }
 
                 //Prevent clicks/Enter key on "allowClickThrough" elements from opening the submenu.
                 } else if (evt.type !== 'click' || !allowClickThrough) {
                     scope.toggleTriggerActive(this);
 
-                    scope.shiftFocus(this, true);
+                    scope.shiftFocus(this);
                 }
 
                 //Making sure further events are not fired after touch
@@ -478,9 +503,10 @@ export default class Megamenu{
                 evt.preventDefault();
 
                 if (isHorizontalNavigation || isVerticalNavigation) {
-                    let directionTrigger = this.getDirectionTrigger.call(this, trigger, isRightArrow || isDownArrow);
+                    let moveForward = isRightArrow || isDownArrow,
+                        directionTrigger = this.getDirectionTrigger.call(this, trigger, moveForward);
 
-                    this.shiftFocus(directionTrigger, true);
+                    this.shiftFocus(directionTrigger, true, moveForward);
                 } else {
                     if (((matchesHorizontal && isDownArrow) || (matchesVertical && isRightArrow)) && trigger.megamenu.target) {
                         let triggerIsActive = this.isTriggerActive(trigger);
@@ -493,12 +519,17 @@ export default class Megamenu{
                         }
 
                         //Move the focus to the first trigger in the submenu.
-                        this.shiftFocus(trigger.megamenu.children[0], triggerIsActive);
+                        this.shiftFocus(trigger.megamenu.children[0], true, true);
                     } else if (matchesVertical && (isRightArrow || isLeftArrow)) {
                         let lastActiveTrigger = this.getLastActiveTrigger(),
-                            targetTrigger = lastActiveTrigger;
+                            targetTrigger = lastActiveTrigger,
+                            setDirection = false,
+                            moveForward = false;
 
                         if (isRightArrow && !trigger.megamenu.target) {
+                            setDirection = true;
+                            moveForward = true;
+
                             targetTrigger = this.getDirectionTrigger.call(this, lastActiveTrigger, true);
 
                             targetTrigger.megamenu.target ? this.toggleTriggerActive(targetTrigger) : this.unsetSiblings(targetTrigger);
@@ -506,20 +537,20 @@ export default class Megamenu{
                             this.unsetSiblings(lastActiveTrigger);
                         }
 
-                        this.shiftFocus(targetTrigger, true);
+                        this.shiftFocus(targetTrigger, setDirection, moveForward);
                     }
                 }
             } else if (evt.keyCode >= 65 && evt.keyCode <= 90) {
                 //Shift focus to matching sibling trigger when pressing a character key.
                 let matchingTrigger = this.getMatchingCharTrigger.call(this, trigger, evt.keyCode);
 
-                this.shiftFocus(matchingTrigger, true);
+                this.shiftFocus(matchingTrigger);
             } else if (evt.keyCode === 35) {
                 //Shift focus to last sibling trigger when pressing the "End" key.
-                this.shiftFocus(trigger.megamenu.siblings[trigger.megamenu.siblings.length - 1], true);
+                this.shiftFocus(trigger.megamenu.siblings[trigger.megamenu.siblings.length - 1], true, false);
             } else if (evt.keyCode === 36) {
                 //Shift focus to first sibling trigger when pressing the "Home" key.
-                this.shiftFocus(trigger.megamenu.siblings[0], true);
+                this.shiftFocus(trigger.megamenu.siblings[0], true, true);
             }
 
         }.bind(this));
@@ -612,7 +643,7 @@ export default class Megamenu{
 
             //Sets the focus back to the original trigger.
             if (lastActiveTrigger) {
-                this.shiftFocus(lastActiveTrigger, true);
+                this.shiftFocus(lastActiveTrigger);
             }
         }
     }

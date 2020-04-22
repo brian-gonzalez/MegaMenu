@@ -246,21 +246,41 @@ define(['exports', '@borngroup/born-utilities'], function (exports, _bornUtiliti
             }
         }, {
             key: 'shiftFocus',
-            value: function shiftFocus(trigger, isVisible) {
+            value: function shiftFocus(trigger, setDirection, moveForward) {
                 if (this._previousFocus && this.options.keyboardNavigation.manageTabIndex) {
                     this._previousFocus.tabIndex = '-1';
                 }
 
-                //Update the `this._previousFocus` element with the provided `trigger` element.
-                this._previousFocus = trigger;
-
                 if (trigger) {
+                    //Check whenever focus should be shifted in a specific direction.
+                    //Should be ignored if focus is shifted to a specific element, i.e. by using keyboard characters.
+                    //And only do so if the current trigger has at least one sibling.
+                    if (setDirection && trigger.megamenu.siblings.length > 1) {
+                        var consumedChecks = 0;
+
+                        //Check wether the provided `trigger` is visible, if it's not, skip to the next visible one.
+                        //Short-circuit if the loop went through all avaiable items, prevents infinite loops.
+                        while (!this.elConsumesSpace(trigger) && consumedChecks <= trigger.megamenu.siblings.length) {
+                            consumedChecks++;
+
+                            trigger = this.getDirectionTrigger(trigger, moveForward);
+                        }
+                    }
+
+                    //Update the `this._previousFocus` element with the provided `trigger` element.
+                    this._previousFocus = trigger;
+
                     if (this.options.keyboardNavigation.manageTabIndex) {
                         trigger.tabIndex = '0';
                     }
 
                     (0, _bornUtilities.forceFocus)(trigger);
                 }
+            }
+        }, {
+            key: 'elConsumesSpace',
+            value: function elConsumesSpace(el) {
+                return el.offsetParent || el.firstElementChild && el.firstElementChild.offsetHeight > 0;
             }
         }, {
             key: 'getMenuItemID',
@@ -362,10 +382,10 @@ define(['exports', '@borngroup/born-utilities'], function (exports, _bornUtiliti
             }
         }, {
             key: 'getDirectionTrigger',
-            value: function getDirectionTrigger(trigger, isForward) {
+            value: function getDirectionTrigger(trigger, moveForward) {
                 var followingTrigger = null;
 
-                if (isForward) {
+                if (moveForward) {
                     followingTrigger = trigger.megamenu.siblings[trigger.megamenu.index + 1] || trigger.megamenu.siblings[0];
                 } else {
                     followingTrigger = trigger.megamenu.siblings[trigger.megamenu.index - 1] || trigger.megamenu.siblings[trigger.megamenu.siblings.length - 1];
@@ -426,14 +446,14 @@ define(['exports', '@borngroup/born-utilities'], function (exports, _bornUtiliti
                                 scope.toggleTriggerActive(this);
 
                                 //Move the focus to the first trigger in the submenu
-                                scope.shiftFocus(trigger.megamenu.children[0]);
+                                scope.shiftFocus(trigger.megamenu.children[0], true, true);
                             }
 
                             //Prevent clicks/Enter key on "allowClickThrough" elements from opening the submenu.
                         } else if (evt.type !== 'click' || !allowClickThrough) {
                             scope.toggleTriggerActive(this);
 
-                            scope.shiftFocus(this, true);
+                            scope.shiftFocus(this);
                         }
 
                         //Making sure further events are not fired after touch
@@ -468,9 +488,10 @@ define(['exports', '@borngroup/born-utilities'], function (exports, _bornUtiliti
                         evt.preventDefault();
 
                         if (isHorizontalNavigation || isVerticalNavigation) {
-                            var directionTrigger = this.getDirectionTrigger.call(this, trigger, isRightArrow || isDownArrow);
+                            var moveForward = isRightArrow || isDownArrow,
+                                directionTrigger = this.getDirectionTrigger.call(this, trigger, moveForward);
 
-                            this.shiftFocus(directionTrigger, true);
+                            this.shiftFocus(directionTrigger, true, moveForward);
                         } else {
                             if ((matchesHorizontal && isDownArrow || matchesVertical && isRightArrow) && trigger.megamenu.target) {
                                 var triggerIsActive = this.isTriggerActive(trigger);
@@ -483,12 +504,17 @@ define(['exports', '@borngroup/born-utilities'], function (exports, _bornUtiliti
                                 }
 
                                 //Move the focus to the first trigger in the submenu.
-                                this.shiftFocus(trigger.megamenu.children[0], triggerIsActive);
+                                this.shiftFocus(trigger.megamenu.children[0], true, true);
                             } else if (matchesVertical && (isRightArrow || isLeftArrow)) {
                                 var lastActiveTrigger = this.getLastActiveTrigger(),
-                                    targetTrigger = lastActiveTrigger;
+                                    targetTrigger = lastActiveTrigger,
+                                    setDirection = false,
+                                    _moveForward = false;
 
                                 if (isRightArrow && !trigger.megamenu.target) {
+                                    setDirection = true;
+                                    _moveForward = true;
+
                                     targetTrigger = this.getDirectionTrigger.call(this, lastActiveTrigger, true);
 
                                     targetTrigger.megamenu.target ? this.toggleTriggerActive(targetTrigger) : this.unsetSiblings(targetTrigger);
@@ -496,20 +522,20 @@ define(['exports', '@borngroup/born-utilities'], function (exports, _bornUtiliti
                                     this.unsetSiblings(lastActiveTrigger);
                                 }
 
-                                this.shiftFocus(targetTrigger, true);
+                                this.shiftFocus(targetTrigger, setDirection, _moveForward);
                             }
                         }
                     } else if (evt.keyCode >= 65 && evt.keyCode <= 90) {
                         //Shift focus to matching sibling trigger when pressing a character key.
                         var matchingTrigger = this.getMatchingCharTrigger.call(this, trigger, evt.keyCode);
 
-                        this.shiftFocus(matchingTrigger, true);
+                        this.shiftFocus(matchingTrigger);
                     } else if (evt.keyCode === 35) {
                         //Shift focus to last sibling trigger when pressing the "End" key.
-                        this.shiftFocus(trigger.megamenu.siblings[trigger.megamenu.siblings.length - 1], true);
+                        this.shiftFocus(trigger.megamenu.siblings[trigger.megamenu.siblings.length - 1], true, false);
                     } else if (evt.keyCode === 36) {
                         //Shift focus to first sibling trigger when pressing the "Home" key.
-                        this.shiftFocus(trigger.megamenu.siblings[0], true);
+                        this.shiftFocus(trigger.megamenu.siblings[0], true, true);
                     }
                 }.bind(this));
             }
@@ -587,7 +613,7 @@ define(['exports', '@borngroup/born-utilities'], function (exports, _bornUtiliti
 
                     //Sets the focus back to the original trigger.
                     if (lastActiveTrigger) {
-                        this.shiftFocus(lastActiveTrigger, true);
+                        this.shiftFocus(lastActiveTrigger);
                     }
                 }
             }
