@@ -228,7 +228,7 @@ var Megamenu = function () {
 
             //Unsets the sibling items when the listener is fired on elements with the 'unsetSiblingsSelector' class
             if (trigger.matches(this.options.unsetSiblingsSelector)) {
-                var eventsArray = this.options.events.split(' ');
+                var eventsArray = this.getEventsArray(trigger);
 
                 eventsArray.forEach(function (currentEvt) {
                     trigger.addEventListener(currentEvt, function () {
@@ -388,7 +388,7 @@ var Megamenu = function () {
     }, {
         key: 'getTriggerParent',
         value: function getTriggerParent(trigger) {
-            return trigger.parentNode;
+            return trigger.closest(trigger.getAttribute('data-menu-parent')) || trigger.parentNode;
         }
 
         /**
@@ -400,7 +400,7 @@ var Megamenu = function () {
     }, {
         key: 'getTriggerTarget',
         value: function getTriggerTarget(trigger) {
-            return trigger.megamenu.parent.querySelector(this.options.targetSelector);
+            return trigger.megamenu.parent.querySelector(trigger.getAttribute('data-menu-target') || this.options.targetSelector);
         }
     }, {
         key: 'getTriggerChildren',
@@ -410,17 +410,17 @@ var Megamenu = function () {
     }, {
         key: 'getTriggerSiblings',
         value: function getTriggerSiblings(trigger) {
-            var closestParentContainer = this.getClosestParentTarget(trigger);
+            var closestParentContainer = this.getClosestSiblingsParent(trigger);
 
             return [].filter.call(this.menu.triggers, function (currentTrigger) {
                 return closestParentContainer.contains(currentTrigger) && this.isSiblingTrigger(trigger, currentTrigger);
             }.bind(this));
         }
     }, {
-        key: 'getClosestParentTarget',
-        value: function getClosestParentTarget(trigger) {
+        key: 'getClosestSiblingsParent',
+        value: function getClosestSiblingsParent(trigger) {
             if (trigger && trigger.nodeName) {
-                return trigger.closest(this.options.targetSelector) || this.menu;
+                return trigger.closest(trigger.getAttribute('data-menu-parent') || this.options.targetSelector) || this.menu;
             } else if (!trigger || trigger.relatedTarget && trigger.relatedTarget !== null) {
                 return this.menu;
             } else {
@@ -478,6 +478,39 @@ var Megamenu = function () {
         }
 
         /**
+         * Returns the event list based on the current trigger configuration.
+         * This allows attaching events on a per-selector-match basis, using the following sample format:
+         * events: [
+         *      {
+         *          selector: '.level-1',
+         *          events: 'touchstart mouseenter keydown'
+         *      },
+         *      {
+         *          selector: ':not(.level-1)',
+         *          events: 'touchstart click keydown'
+         *      }
+         * ]
+         */
+
+    }, {
+        key: 'getEventsArray',
+        value: function getEventsArray(trigger) {
+            var eventsArray = [];
+
+            if (typeof this.options.events === 'string') {
+                eventsArray = this.options.events.split(' ');
+            } else if (Array.isArray(this.options.events)) {
+                this.options.events.forEach(function (currentEventGroup) {
+                    if (trigger.matches(currentEventGroup.selector)) {
+                        eventsArray = eventsArray.concat(currentEventGroup.events.split(' '));
+                    }
+                });
+            }
+
+            return eventsArray;
+        }
+
+        /**
          * Uses 'this.options.events' to set up handlers on per item/trigger basis.
          * @param  {[Node]} trigger [Node where we're setting handlers to]
          */
@@ -486,7 +519,7 @@ var Megamenu = function () {
         key: 'setupActivationHandlers',
         value: function setupActivationHandlers(trigger) {
             var scope = this,
-                eventsArray = this.options.events.split(' ');
+                eventsArray = this.getEventsArray(trigger);
 
             eventsArray.forEach(function (currentEvt) {
                 trigger.addEventListener(currentEvt, function (evt) {
@@ -634,9 +667,9 @@ var Megamenu = function () {
                     this.unsetSiblings(trigger);
                 }
             } else {
-                this._beforeTriggerUnset(trigger);
+                this._beforeTriggerUnset(trigger, this);
                 this.unsetSiblings(trigger, this.setTriggerActive.bind(this));
-                this._afterTriggerSet(trigger);
+                this._afterTriggerSet(trigger, this);
             }
         }
 
@@ -690,20 +723,32 @@ var Megamenu = function () {
     }, {
         key: 'unsetCurrentSubmenu',
         value: function unsetCurrentSubmenu(evt) {
-            if (evt.keyCode === 27 || (evt.keyCode === 13 || !evt.keyCode) && evt.target.hasAttribute('data-menu-close')) {
+            var isEscKey = evt.keyCode === 27;
+
+            if (isEscKey || (evt.keyCode === 13 || !evt.keyCode) && evt.target.hasAttribute('data-menu-close')) {
                 var lastActiveTrigger = this.getLastActiveTrigger();
 
                 evt.preventDefault();
 
                 //If this element exists inside a MegaMenu target, close that target.
                 //Otherwise close the full menu.
-                if (evt.target && this.getClosestParentTarget(evt.target)) {
-                    var targetTriggerSelector = evt.target.getAttribute('data-menu-close');
+                if (evt.target && this.getClosestSiblingsParent(evt.target)) {
+                    var targetTriggerSelector = evt.target.getAttribute('data-menu-close'),
+
+                    //Set a flag to prevent unsetting the last active trigger when pressing the ESC key AND if disableUnsetSelf is TRUE for the last trigger..
+                    allowUnset = !isEscKey || lastActiveTrigger && !lastActiveTrigger.megamenu.disableUnsetSelf;
 
                     //If the data-menu-close element specifies a target selector, use that selector to determine which trigger to unset.
                     lastActiveTrigger = targetTriggerSelector ? this.getMatchingActiveTrigger(targetTriggerSelector) || lastActiveTrigger : lastActiveTrigger;
 
-                    this.unsetSiblings(lastActiveTrigger);
+                    if (allowUnset) {
+                        this.unsetSiblings(lastActiveTrigger);
+                    } else if (evt.target === lastActiveTrigger) {
+                        //Re-assign `lastActiveTrigger` to the trigger before the last one.
+                        lastActiveTrigger = this.getLastActiveTrigger(2);
+
+                        this.unsetSiblings(lastActiveTrigger);
+                    }
 
                     //Prevent the event from bubbling if there's an active trigger.
                     if (lastActiveTrigger) {
@@ -735,9 +780,11 @@ var Megamenu = function () {
     }, {
         key: 'getLastActiveTrigger',
         value: function getLastActiveTrigger() {
+            var index = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 1;
+
             var activeTriggers = this.getActiveTriggers();
 
-            return activeTriggers[activeTriggers.length - 1];
+            return activeTriggers[activeTriggers.length - index];
         }
 
         /**
@@ -772,7 +819,7 @@ var Megamenu = function () {
             if (this.getActiveTriggers().length) {
                 this.menu.isActive = true;
                 this.menu.classList.add(this.options.menuActiveClass);
-                this._afterMenuSet(this.menu);
+                this._afterMenuSet(this.menu, this);
             }
         }
     }, {
@@ -781,7 +828,7 @@ var Megamenu = function () {
             if (!this.getActiveTriggers().length) {
                 this.menu.isActive = false;
                 this.menu.classList.remove(this.options.menuActiveClass);
-                this._afterMenuUnset(this.menu);
+                this._afterMenuUnset(this.menu, this);
             }
         }
 
@@ -792,7 +839,7 @@ var Megamenu = function () {
     }, {
         key: 'unsetSiblings',
         value: function unsetSiblings(trigger, callback) {
-            var commonContainer = this.getClosestParentTarget(trigger),
+            var commonContainer = this.getClosestSiblingsParent(trigger) || this.menu,
                 activeElements = commonContainer.querySelectorAll('.' + this.options.itemActiveClass);
 
             [].forEach.call(activeElements, function (el) {
@@ -802,7 +849,7 @@ var Megamenu = function () {
                 if (el.megamenu) {
                     el.megamenu.isActive = false;
 
-                    this._afterTriggerUnset(el);
+                    this._afterTriggerUnset(el, this);
 
                     //Remove custom attributes if the current element is a Megamenu trigger.
                     if (el.megamenu.target) {

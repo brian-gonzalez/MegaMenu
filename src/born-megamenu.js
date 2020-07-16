@@ -206,7 +206,7 @@ export default class Megamenu{
 
         //Unsets the sibling items when the listener is fired on elements with the 'unsetSiblingsSelector' class
         if (trigger.matches(this.options.unsetSiblingsSelector)) {
-            let eventsArray = this.options.events.split(' ');
+            let eventsArray = this.getEventsArray(trigger);
 
             eventsArray.forEach(function(currentEvt) {
                 trigger.addEventListener(currentEvt, function() {
@@ -344,7 +344,7 @@ export default class Megamenu{
      * @return {[HTMLNode]} [Parent of the passed element]
      */
     getTriggerParent(trigger) {
-        return trigger.parentNode;
+        return trigger.closest(trigger.getAttribute('data-menu-parent')) || trigger.parentNode;
     }
 
     /**
@@ -353,7 +353,7 @@ export default class Megamenu{
      * @return {[HTMLNode]} [Target of the passed element]
      */
     getTriggerTarget(trigger) {
-        return trigger.megamenu.parent.querySelector(this.options.targetSelector);
+        return trigger.megamenu.parent.querySelector(trigger.getAttribute('data-menu-target') || this.options.targetSelector);
     }
 
     getTriggerChildren(target) {
@@ -361,16 +361,16 @@ export default class Megamenu{
     }
 
     getTriggerSiblings(trigger) {
-        let closestParentContainer = this.getClosestParentTarget(trigger);
+        let closestParentContainer = this.getClosestSiblingsParent(trigger);
 
         return [].filter.call(this.menu.triggers, function(currentTrigger) {
             return closestParentContainer.contains(currentTrigger) && this.isSiblingTrigger(trigger, currentTrigger);
         }.bind(this));
     }
 
-    getClosestParentTarget(trigger) {
+    getClosestSiblingsParent(trigger) {
         if (trigger && trigger.nodeName) {
-            return trigger.closest(this.options.targetSelector) || this.menu;
+            return trigger.closest(trigger.getAttribute('data-menu-parent') || this.options.targetSelector) || this.menu;
         } else if (!trigger || (trigger.relatedTarget && trigger.relatedTarget !== null)) {
             return this.menu;
         } else {
@@ -420,12 +420,42 @@ export default class Megamenu{
     }
 
     /**
+     * Returns the event list based on the current trigger configuration.
+     * This allows attaching events on a per-selector-match basis, using the following sample format:
+     * events: [
+     *      {
+     *          selector: '.level-1',
+     *          events: 'touchstart mouseenter keydown'
+     *      },
+     *      {
+     *          selector: ':not(.level-1)',
+     *          events: 'touchstart click keydown'
+     *      }
+     * ]
+     */
+    getEventsArray(trigger) {
+        let eventsArray = [];
+
+        if (typeof this.options.events === 'string') {
+            eventsArray = this.options.events.split(' ');
+        } else if (Array.isArray(this.options.events)) {
+            this.options.events.forEach(function(currentEventGroup) {
+                if (trigger.matches(currentEventGroup.selector)) {
+                    eventsArray = eventsArray.concat(currentEventGroup.events.split(' '));
+                }
+            });
+        }
+
+        return eventsArray;
+    }
+
+    /**
      * Uses 'this.options.events' to set up handlers on per item/trigger basis.
      * @param  {[Node]} trigger [Node where we're setting handlers to]
      */
     setupActivationHandlers(trigger) {
         let scope = this,
-            eventsArray = this.options.events.split(' ');
+            eventsArray = this.getEventsArray(trigger);
 
         eventsArray.forEach(function(currentEvt) {
             trigger.addEventListener(currentEvt, function(evt) {
@@ -568,9 +598,9 @@ export default class Megamenu{
                 this.unsetSiblings(trigger);
             }
         } else {
-            this._beforeTriggerUnset(trigger);
+            this._beforeTriggerUnset(trigger, this);
             this.unsetSiblings(trigger, this.setTriggerActive.bind(this));
-            this._afterTriggerSet(trigger);
+            this._afterTriggerSet(trigger, this);
         }
     }
 
@@ -618,20 +648,31 @@ export default class Megamenu{
      * @param  {[type]} trigger [description]
      */
     unsetCurrentSubmenu(evt) {
-        if (evt.keyCode === 27 || ((evt.keyCode === 13 || !evt.keyCode) && evt.target.hasAttribute('data-menu-close'))) {
+        let isEscKey = evt.keyCode === 27;
+
+        if (isEscKey || ((evt.keyCode === 13 || !evt.keyCode) && evt.target.hasAttribute('data-menu-close'))) {
             let lastActiveTrigger = this.getLastActiveTrigger();
 
             evt.preventDefault();
 
             //If this element exists inside a MegaMenu target, close that target.
             //Otherwise close the full menu.
-            if (evt.target && this.getClosestParentTarget(evt.target)) {
-                let targetTriggerSelector = evt.target.getAttribute('data-menu-close');
+            if (evt.target && this.getClosestSiblingsParent(evt.target)) {
+                let targetTriggerSelector = evt.target.getAttribute('data-menu-close'),
+                    //Set a flag to prevent unsetting the last active trigger when pressing the ESC key AND if disableUnsetSelf is TRUE for the last trigger..
+                    allowUnset = !isEscKey || (lastActiveTrigger && !lastActiveTrigger.megamenu.disableUnsetSelf);
 
                 //If the data-menu-close element specifies a target selector, use that selector to determine which trigger to unset.
                 lastActiveTrigger = targetTriggerSelector ? (this.getMatchingActiveTrigger(targetTriggerSelector) || lastActiveTrigger) : lastActiveTrigger;
 
-                this.unsetSiblings(lastActiveTrigger);
+                if (allowUnset) {
+                    this.unsetSiblings(lastActiveTrigger);
+                } else if (evt.target === lastActiveTrigger) {
+                    //Re-assign `lastActiveTrigger` to the trigger before the last one.
+                    lastActiveTrigger = this.getLastActiveTrigger(2);
+
+                    this.unsetSiblings(lastActiveTrigger);
+                }
 
                 //Prevent the event from bubbling if there's an active trigger.
                 if (lastActiveTrigger) {
@@ -658,10 +699,10 @@ export default class Megamenu{
      * navigating back in the MegaMenu tree, when closing submenus, etc.
      * @return {HTMLNode} [description]
      */
-    getLastActiveTrigger() {
+    getLastActiveTrigger(index = 1) {
         let activeTriggers = this.getActiveTriggers();
 
-        return activeTriggers[activeTriggers.length - 1];
+        return activeTriggers[activeTriggers.length - index];
     }
 
     /**
@@ -687,7 +728,7 @@ export default class Megamenu{
         if (this.getActiveTriggers().length) {
             this.menu.isActive = true;
             this.menu.classList.add(this.options.menuActiveClass);
-            this._afterMenuSet(this.menu);
+            this._afterMenuSet(this.menu, this);
         }
     }
 
@@ -695,7 +736,7 @@ export default class Megamenu{
         if (!this.getActiveTriggers().length) {
             this.menu.isActive = false;
             this.menu.classList.remove(this.options.menuActiveClass);
-            this._afterMenuUnset(this.menu);
+            this._afterMenuUnset(this.menu, this);
         }
     }
 
@@ -703,7 +744,7 @@ export default class Megamenu{
      * Unsets all of the `trigger`'s siblings, then '_afterMenuUnset' is fired
      */
     unsetSiblings(trigger, callback) {
-        let commonContainer = this.getClosestParentTarget(trigger),
+        let commonContainer = this.getClosestSiblingsParent(trigger) || this.menu,
             activeElements = commonContainer.querySelectorAll('.' + this.options.itemActiveClass);
 
         [].forEach.call(activeElements, function(el) {
@@ -713,7 +754,7 @@ export default class Megamenu{
             if (el.megamenu) {
                 el.megamenu.isActive = false;
 
-                this._afterTriggerUnset(el);
+                this._afterTriggerUnset(el, this);
 
                 //Remove custom attributes if the current element is a Megamenu trigger.
                 if (el.megamenu.target) {
