@@ -1,6 +1,6 @@
 {
   "name": "@borngroup/born-megamenu",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "description": "Allows to create mega menu functionality, including events, and callbacks.",
   "main": "dist/born-megamenu.min.js",
   "scripts": {
