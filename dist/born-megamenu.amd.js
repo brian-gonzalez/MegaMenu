@@ -33,7 +33,11 @@ define(['exports', '@borngroup/born-utilities'], function (exports, _bornUtiliti
         function Megamenu(options) {
             _classCallCheck(this, Megamenu);
 
-            this.options = options || {};
+            //Keep track of the original set of options for easy referencing or restore later.
+            this.originalOptions = options;
+
+            //Clone options to prevent mutations.
+            this.options = (0, _bornUtilities.objectAssign)({}, this.originalOptions);
 
             this.setProperties();
 
@@ -45,16 +49,58 @@ define(['exports', '@borngroup/born-utilities'], function (exports, _bornUtiliti
                 return;
             }
 
-            this.setupEventCallbacks();
+            //Store the original HTML so that we can retrieve it later if the `` option is enabled.
+            this.menuOriginalHTML = this.menu.innerHTML;
 
-            this.menu.triggers = this.menu.querySelectorAll(this.options.triggerSelector);
+            if (this.options.reInitOnBreakpointChange) {
+                window.addEventListener('resize', function () {
+                    if (!window.matchMedia(this.currentBreakpoint.breakpoint).matches) {
+                        this.reInitialize();
+                    }
+                }.bind(this));
+            }
 
-            [].forEach.call(this.menu.triggers, this.setupMenuTriggers.bind(this));
-
-            this.setupMenuControlListeners();
+            this.setupInteractions();
         }
 
+        /**
+         * Resets Megamenu by restoring the HTML to its original state, and removes all events attached to the Menu DOM element.
+         */
+
+
         _createClass(Megamenu, [{
+            key: 'destroy',
+            value: function destroy() {
+                this.menu.textContent = '';
+
+                this.manageMenuControlListeners(true);
+
+                this.menu.insertAdjacentHTML('afterbegin', this.menuOriginalHTML);
+            }
+        }, {
+            key: 'reInitialize',
+            value: function reInitialize() {
+                this.destroy();
+
+                //Clone options to prevent mutations.
+                this.options = (0, _bornUtilities.objectAssign)({}, this.originalOptions);
+
+                this.setProperties();
+
+                this.setupInteractions();
+            }
+        }, {
+            key: 'setupInteractions',
+            value: function setupInteractions() {
+                this.setupEventCallbacks();
+
+                this.menu.triggers = this.menu.querySelectorAll(this.options.triggerSelector);
+
+                [].forEach.call(this.menu.triggers, this.setupMenuTriggers.bind(this));
+
+                this.setupMenuControlListeners();
+            }
+        }, {
             key: 'setupEventCallbacks',
             value: function setupEventCallbacks() {
                 this._beforeTriggerUnset = this.options.beforeTriggerUnset || function () {};
@@ -65,23 +111,56 @@ define(['exports', '@borngroup/born-utilities'], function (exports, _bornUtiliti
                 this._afterMenuUnset = this.options.afterMenuUnset || function () {};
             }
         }, {
+            key: 'manageMenuControlListeners',
+            value: function manageMenuControlListeners(detach) {
+                Object.keys(this.menuListeners).forEach(function (key) {
+                    this.menu[detach ? 'removeEventListener' : 'addEventListener'](this.menuListeners[key].type, this.menuListeners[key].handler);
+                }.bind(this));
+            }
+        }, {
+            key: 'createMenuControlListeners',
+            value: function createMenuControlListeners() {
+                var self = this;
+
+                this.menuListeners = {
+                    getCursorSpeed: {
+                        type: 'mousemove',
+                        handler: self.getCursorSpeed.bind(self)
+                    },
+                    unsetOnClick: {
+                        type: 'click',
+                        //Leverage unsetCurrentSubmenu() and listen to clicks or keyboard events to close the menu.
+                        handler: function (evt) {
+                            self.isKeyboardEvent = false;
+
+                            self.unsetCurrentSubmenu(evt);
+                        }.bind(self)
+                    },
+                    unsetOnKeydown: {
+                        type: 'keydown',
+                        //Set a separate keydown events to handle keyboard-only navigation focus shifting.
+                        handler: function (evt) {
+                            self.isKeyboardEvent = true;
+
+                            self.unsetCurrentSubmenu(evt);
+                        }.bind(self)
+                    }
+                };
+
+                //Determines if 'menu' should be closed when hovering out of it.
+                if (this.options.unsetOnMouseleave) {
+                    this.menuListeners.unsetOnMouseleave = {
+                        type: 'mouseleave',
+                        handler: this.unsetSiblings.bind(this)
+                    };
+                }
+            }
+        }, {
             key: 'setupMenuControlListeners',
             value: function setupMenuControlListeners() {
-                this.menu.addEventListener('mousemove', this.getCursorSpeed.bind(this));
+                this.createMenuControlListeners();
 
-                //Leverage unsetCurrentSubmenu() and listen to clicks or keyboard events to close the menu.
-                this.menu.addEventListener('click', function (evt) {
-                    this.isKeyboardEvent = false;
-
-                    this.unsetCurrentSubmenu(evt);
-                }.bind(this));
-
-                //Set a separate keydown events to handle keyboard-only navigation focus shifting.
-                this.menu.addEventListener('keydown', function (evt) {
-                    this.isKeyboardEvent = true;
-
-                    this.unsetCurrentSubmenu(evt);
-                }.bind(this));
+                this.manageMenuControlListeners();
 
                 //Listen to whenever a trigger gains focus. If the focused trigger is not active, unset all of its siblings.
                 //This prevents a navigation panel from staying open when using the keyboard (Tab) to navigate around.
@@ -108,11 +187,6 @@ define(['exports', '@borngroup/born-utilities'], function (exports, _bornUtiliti
                             this.unsetSiblings();
                         }
                     }.bind(this));
-                }
-
-                //Determines if 'menu' should be closed when hovering out of it.
-                if (this.options.unsetOnMouseleave) {
-                    this.menu.addEventListener('mouseleave', this.unsetSiblings.bind(this));
                 }
             }
         }, {
@@ -155,6 +229,8 @@ define(['exports', '@borngroup/born-utilities'], function (exports, _bornUtiliti
                     //Not using forEach cause can't kill the loop.
                     for (var i = 0; i < this.options.responsive.length; i++) {
                         if (_mergeBreakpointProperties.call(this, this.options.responsive[i])) {
+                            this.currentBreakpoint = this.options.responsive[i];
+
                             break;
                         }
                     }

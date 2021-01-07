@@ -29,6 +29,8 @@ Allows to create mega menu functionality, featuring events, callbacks, and acces
 
 **hoverDelay**: [Integer] *Default: 0*. When hovering, set a wait time (in milliseconds) before setting the 'trigger' and 'target' as active after hovering out of it.
 
+**reInitOnBreakpointChange**: [Boolean] *Default: false*. Re-initializes MegaMenu when entering different configured breakpoints. Defaults to false cause generally this is not something that is necessary, however this feature can be useful when different breakpoints contain distinct sets of events, callbacks, and 'trigger' selectors.
+
 **responsive**: [Object] Specify settings for specific breakpoints. This is great for when you need different viewports to have different functionality.  
 
 Parameters:  
