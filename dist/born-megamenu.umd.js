@@ -1,4 +1,16 @@
-define(["exports", "@borngroup/born-utilities"], function (_exports, _bornUtilities) {
+(function (global, factory) {
+  if (typeof define === "function" && define.amd) {
+    define(["exports", "@borngroup/born-utilities"], factory);
+  } else if (typeof exports !== "undefined") {
+    factory(exports, require("@borngroup/born-utilities"));
+  } else {
+    var mod = {
+      exports: {}
+    };
+    factory(mod.exports, global.bornUtilities);
+    global.bornMegamenu = mod.exports;
+  }
+})(typeof globalThis !== "undefined" ? globalThis : typeof self !== "undefined" ? self : this, function (_exports, _bornUtilities) {
   "use strict";
 
   Object.defineProperty(_exports, "__esModule", {

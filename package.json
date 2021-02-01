@@ -8,9 +8,11 @@
     "prepublish": "npm run build",
     "build": "npm-run-all build:*",
     "build:commonjs": "babel src/born-megamenu.js --out-file dist/born-megamenu.js",
-    "build:amd": "babel --plugins transform-es2015-modules-amd src/born-megamenu.js --out-file dist/born-megamenu.amd.js",
+    "build:amd": "babel --plugins @babel/plugin-transform-modules-amd src/born-megamenu.js --out-file dist/born-megamenu.amd.js",
+    "build:umd": "babel --plugins @babel/plugin-transform-modules-umd src/born-megamenu.js --out-file dist/born-megamenu.umd.js",
     "uglify:commonjs": "uglifyjs dist/born-megamenu.js --output dist/born-megamenu.min.js",
     "uglify:amd": "uglifyjs dist/born-megamenu.amd.js --output dist/born-megamenu.amd.min.js",
+    "uglify:umd": "uglifyjs dist/born-megamenu.umd.js --output dist/born-megamenu.umd.min.js",
     "postbuild": "npm-run-all uglify:*"
   },
   "repository": {
@@ -27,13 +29,15 @@
   "author": "BORN Group FE Team fed@borngroup.com",
   "license": "ISC",
   "dependencies": {
-    "@borngroup/born-utilities": "^2.4.5"
+    "@borngroup/born-utilities": "^3.0.0"
   },
   "devDependencies": {
-    "babel-cli": "^6.24.1",
-    "babel-plugin-transform-es2015-modules-amd": "^6.24.1",
-    "babel-preset-es2015": "^6.24.1",
-    "npm-run-all": "^4.0.2",
-    "uglify-js": "^3.0.15"
+    "@babel/cli": "^7.12.10",
+    "@babel/core": "^7.12.10",
+    "@babel/plugin-transform-modules-amd": "^7.12.1",
+    "@babel/plugin-transform-modules-umd": "^7.12.1",
+    "@babel/preset-env": "^7.12.11",
+    "npm-run-all": "^4.1.5",
+    "uglify-js": "^3.12.6"
   }
 }
