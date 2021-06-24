@@ -1,4 +1,4 @@
-# BORN Megamenu #
+# MegaMenu #
 
 Allows to create mega menu functionality, featuring events, callbacks, and accessibility settings.
 
